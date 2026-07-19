@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# LaTeX build artifacts — keep .tex/.sty/.bst/.bib source, not compiled output
+paper/*.pdf
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.toc
+
+# OS
+.DS_Store

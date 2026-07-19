@@ -1,0 +1,103 @@
+# {{PROJECT_NAME}}
+
+{{ONE_LINE_PROJECT_DESCRIPTION}}. Target venue: {{VENUE}}.
+{{CLUSTER_OR_COMPUTE_NOTES — e.g. "Cluster: X (scheduler Y, partition Z)." or "Local GPU only."}}
+
+## Orientation — what's what
+
+| Directory | Status | Notes |
+|---|---|---|
+| `{{ACTIVE_REPO}}/` | **ACTIVE** | All new work goes here. |
+| `research/` | active | `state.jsonl` (append-only lab notebook), `HYPOTHESES_SUMMARY.md` (ordered digest), `PAPER_STANDARD.md` (rigor gate for paper claims), `significance.py`/`sync_citations.py` (deterministic helpers). |
+| `paper/` | active | LaTeX source, compiled with `tectonic` (see `build-paper` skill). |
+| `notes/` | active | `journal/` (weekly log), `meetings/`. |
+
+<!-- Add rows here for any deprecated/legacy directories as your project accumulates them, with an
+explicit instruction not to explore them without being asked — this saved real token budget in
+practice (see the auto-lab README for why). -->
+
+## Research methodology
+
+This project uses an **append-only lab-notebook pattern** in `research/state.jsonl`. Don't invent
+a different bookkeeping scheme — this one is deliberately chosen to keep hypothesis-testing
+honest and cheap to resume across sessions.
+
+**The cycle:**
+1. **Hypothesis** — formulate a quantitative, falsifiable prediction BEFORE running the
+   experiment. Log: `{"type":"hypothesis","id":"H_N","prediction":"..."}`. Define the
+   success/failure criterion before seeing results — this is what prevents post-hoc narrative.
+2. **Experiment** — run it, always logging enough to reconstruct what was actually varied.
+3. **Result** — `{"type":"result","exp_id":...,"results":{...},"deltas_vs_baseline":{...},"note":"..."}`.
+4. **Verdict** — `{"type":"hypothesis_status","id":"H_N","verdict":"confirmed|rejected|pending",...}`,
+   compared against the criterion from step 1, not against what would have been a nicer finding.
+   Before calling a close call "confirmed", run `python3 research/significance.py --id H_N`.
+5. **Insight** — when a pattern crystallizes across ≥2 experiments, log
+   `{"type":"insight",...}` with the mechanistic explanation. This is what becomes a paper section.
+6. **Be reactive** — the next experiment's priority comes from what's `pending` in the most recent
+   `hypothesis_status` entries, not from a fixed list written a week ago. Don't hardcode "next
+   steps" anywhere except `state.jsonl` — it goes stale immediately.
+
+**Start of session**: log `{"type":"session","timestamp":...,"note":"this session's focus"}` — cheap,
+and lets a future session (or an autonomous agent) resume without re-reading everything.
+
+**Big findings** (a verdict that redirects the project's direction) should also land in your
+persistent Claude memory (`project_<name>.md`), not just `state.jsonl` — the log is append-only
+and grows past what's cheap to re-read every session.
+
+**Paper-track**: hypotheses that will actually appear in the paper go through a separate, higher
+bar — see `research/PAPER_STANDARD.md`. Most hypotheses never need this; it exists so the fast
+loop above stays fast.
+
+**Weekly journal**: use the `weekly-journal` skill to close out `notes/journal/wNN.md` from
+`state.jsonl` instead of writing it from memory.
+
+## Rules for minimizing token consumption
+
+- **Never** `cat` a full log. Use `tail -n 50` or `grep` for the specific metric.
+- **Never** do an unfiltered recursive `ls`/`find`/glob inside a deprecated/legacy directory once
+  you have one — point at the exact file you need.
+- To check experiment status, read `research/state.jsonl` with `tail -N`/`grep '"type":"X"'`, not
+  the whole file. For the full hypothesis verdict table, read `research/HYPOTHESES_SUMMARY.md`
+  instead of parsing the jsonl.
+- For open-ended codebase exploration, delegate to a read-only search subagent rather than
+  chaining `find`/`grep` manually in the main session.
+- Before re-deriving something ("what's already been tried?"), check `state.jsonl` and persistent
+  memory first — cheaper than reconstructing it from raw logs.
+- Use the `lab-status` skill for a condensed compute+progress snapshot instead of manually
+  chaining scheduler/GPU/log commands.
+
+## Compute cheatsheet
+
+```bash
+{{COMPUTE_ENV_SETUP}}
+
+{{QUEUE_STATUS_COMMAND}}          # e.g. squeue -u <user> --format="%.7i %.8j %.2t %.10M %R"
+nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv,noheader
+```
+
+{{ANY_SHARED_INFRA_NOTES — e.g. "GPUs run both via scheduler and direct CUDA_VISIBLE_DEVICES=N +
+nohup — check both paths when checking what's running."}}
+
+## Skills installed (`.claude/skills/`)
+
+- **lab-status** — cheap snapshot of compute + experiment progress, no full log dumps.
+- **log-finding** — schema templates for `state.jsonl` so you don't reinvent the format.
+- **weekly-journal** — closes the week from `state.jsonl` instead of memory.
+- **build-paper** — compiles `paper/` with `tectonic`, figure-generation convention.
+- **paper-vs-code** — cross-checks a paper's claims against its released implementation before you
+  build on it or cite it.
+
+## Paper writing
+
+`paper/` — LaTeX source (ships with an ICLR template as a placeholder, swap for your actual
+venue). Compile with `tectonic` (user-space, no sudo — see `build-paper` skill). Section skeleton
+in `main.tex` has TODO markers pointing at the exact source for each piece
+(`research/HYPOTHESES_SUMMARY.md`, `PAPER_STANDARD.md`, `state.jsonl`) — not prose to fill freely.
+
+## Autonomous research agent
+
+`.claude/agents/autoresearch-template.md` is a template for an autonomous agent that reads
+`research/state.jsonl`, checks compute availability, launches the next highest-priority
+experiment, logs results, grounds new hypotheses against prior literature via web search, and
+self-paces with a wakeup schedule. Copy it to `~/.claude/agents/autoresearch-{{PROJECT_NAME}}.md`
+and fill in the `{{PLACEHOLDERS}}` before use.

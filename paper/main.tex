@@ -1,0 +1,98 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2026_conference,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+% NOTE: this ships with the ICLR 2026 style as a placeholder. Swap
+% iclr2026_conference.sty/.bst for your actual target venue's files (most
+% conferences publish an official LaTeX template on GitHub or their site) --
+% update the \usepackage line above and \bibliographystyle below to match.
+
+\title{TODO: working title}
+
+% If your venue does double-blind review, do NOT fill in real author
+% names/affiliations until you uncomment \iclrfinalcopy below for camera-ready.
+\author{Anonymous authors \\ Paper under double-blind review}
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+%\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+TODO. One paragraph, no citations. Only write this once you have at least one
+\texttt{paper\_track} hypothesis with \texttt{status: promoted} in
+\texttt{research/state.jsonl} -- see \texttt{research/PAPER\_STANDARD.md}.
+\end{abstract}
+
+\section{Introduction}
+TODO. Motivate the problem, then contributions as a bullet list, each pointing
+at the hypothesis ID(s) in \texttt{research/HYPOTHESES\_SUMMARY.md} that
+support it:
+\begin{itemize}
+  \item TODO -- contribution 1 (H\_N)
+  \item TODO -- contribution 2 (H\_N)
+\end{itemize}
+
+\section{Related Work}
+TODO -- populate via literature grounding done at hypothesis-registration
+time (see the autonomous research agent's web-search step, and any
+\texttt{"prior\_art"} fields logged in \texttt{research/state.jsonl}), and via
+the \texttt{paper-vs-code} skill for anything you're building directly on top
+of another paper's released implementation.
+
+\section{Method}
+TODO.
+
+\section{Experiments}
+TODO. State the pre-registered predictions before results, per this
+project's own methodology (see \texttt{research/state.jsonl}'s
+\texttt{hypothesis} entries) -- that discipline is itself worth a line in the
+paper (avoids post-hoc narrative).
+
+\section{Results}
+TODO. Before writing "X beats Y by Z", run
+\texttt{python3 research/significance.py --id H\_N} and only state what
+survives that check.
+
+\begin{table}[h]
+\centering
+\caption{TODO caption.}
+\label{tab:headline}
+\begin{tabular}{lccc}
+\toprule
+Condition & Metric A & Metric B & Metric C \\
+\midrule
+Baseline & -- & -- & -- \\
+Ours & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+TODO. Negative results earn their keep here -- a rejected hypothesis that
+rules out a plausible-sounding alternative explanation is worth stating
+explicitly, not hidden.
+
+\section{Conclusion}
+TODO.
+
+\bibliography{references}
+\bibliographystyle{iclr2026_conference}
+
+\appendix
+\section{Appendix}
+TODO -- full hyperparameter tables, additional conditions, per-seed
+breakdowns (pull from \texttt{research/state.jsonl} \texttt{result} entries,
+not from memory -- always re-derive from source before a submission).
+
+\end{document}
