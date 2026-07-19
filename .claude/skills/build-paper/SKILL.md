@@ -29,10 +29,24 @@ committing it.
 
 ## Adding figures
 
-Put figure-generation scripts in `paper/figures/`, reading directly from `research/state.jsonl`
-`result` entries — never hand-transcribe numbers from memory into a plot, always regenerate from
-source so a stale number can't silently persist after a re-run changes the underlying result.
-Output PNGs/PDFs into `paper/figures/`, reference with `\includegraphics{figures/<name>}`.
+**See `paper/FIGURE_STANDARD.md` first** — the checklist a figure must pass (vector PDF not PNG,
+validated colorblind-safe palette from `paper/figures/style.py` — built with the `dataviz` skill's
+method, Wilson CI from `research/significance.py`, zero-baseline for bars, caption states N/stats
+method). Copy `paper/figures/example_fig.py`'s structure for a new figure rather than starting
+blank — it runs out of the box with demo data so you can see the pipeline work first.
+
+Figure scripts need `matplotlib`, which does **not** belong in your main training/eval venv (no
+reason to drag heavy deps into a plotting script). Use a dedicated lightweight venv:
+```bash
+python3 -m venv paper/.venv-figs && source paper/.venv-figs/bin/activate
+pip install -r paper/requirements.txt
+python3 paper/figures/your_new_figure.py
+```
+Read directly from `research/state.jsonl` via `research/significance.py`'s `load_results` — never
+hand-transcribe numbers from memory into a plot, always regenerate from source so a stale number
+can't silently persist after a re-run changes the underlying result. Generated PDFs are gitignored
+(regenerate on demand, same policy as `main.pdf`) — reference from `main.tex` with
+`\includegraphics{figures/<name>.pdf}`.
 
 ## Keeping content honest
 

@@ -30,6 +30,7 @@ written from memory.
 | `research/significance.py` | Wilson-score confidence intervals over your results, zero LLM calls. Flags "likely real" vs "within noise" before anyone calls a delta a discovery. |
 | `research/sync_citations.py` | Turns `citation` log entries (found during literature-grounding search) into a clean `references.bib`, automatically, deduplicated. |
 | `paper/` | LaTeX paper source (ships with an ICLR template as a placeholder — swap for your venue), compiled with [tectonic](https://tectonic-typesetting.github.io/) — no system LaTeX install, no sudo. |
+| `paper/FIGURE_STANDARD.md` + `paper/figures/style.py` | A checklist and a shared matplotlib style so figures don't get eyeballed together: vector PDF, a colorblind-safe palette validated (not guessed) against a white print surface, Wilson CI bands instead of bare point estimates, zero-baseline bars. Ships a working example figure. |
 | `.claude/agents/autoresearch-template.md` | An autonomous agent that reads the log, checks your compute, launches the next experiment, logs results, grounds new hypotheses against prior literature via web search, and self-paces on a wakeup schedule. Copy, fill in the placeholders, go. |
 | `.claude/skills/lab-status` | One command, a compact answer to "what's running and what's the latest result" — never a raw log dump. |
 | `.claude/skills/log-finding` | The `state.jsonl` schema, so you (or the agent) never reinvent the format mid-project. |
@@ -37,7 +38,27 @@ written from memory.
 | `.claude/skills/weekly-journal` | Closes out a weekly log from the state log instead of from memory. |
 | `.claude/skills/paper-vs-code` | Cross-checks a paper's claimed method against its actual released code — catches the gap between what's described and what's implemented, with numerical verification where it's cheap. |
 
-## Quickstart
+## Install — the easy way
+
+Open Claude Code in your project's directory (new or existing) and paste this:
+
+> Set up [auto-lab](https://github.com/GonzaloFuentes1/auto-lab) in this project. Clone
+> `https://github.com/GonzaloFuentes1/auto-lab.git` into a temp directory, then copy its
+> `.claude/`, `research/`, `paper/`, `notes/`, `CLAUDE.md.template`, `.gitignore`, and `LICENSE`
+> into this project — don't overwrite anything that already exists here, merge instead. Rename
+> `CLAUDE.md.template` to `CLAUDE.md` and ask me what to put in each `{{PLACEHOLDER}}` (project
+> name, target venue, compute environment — cluster/scheduler or local GPU, etc.) rather than
+> guessing. Do the same for `.claude/agents/autoresearch-template.md` — rename it to something
+> project-specific and fill in its placeholders from my answers too. Install `tectonic` (for
+> compiling `paper/`) if it isn't already on my `$PATH` — no sudo, user-space install. Read
+> `research/HYPOTHESES_SUMMARY_HOWTO.md` and help me design a hypothesis taxonomy for my actual
+> project instead of copying the example one literally. Finish by appending a `session` entry to
+> `research/state.jsonl` describing this setup.
+
+Claude Code will clone it, ask you the placeholder questions instead of guessing, and leave you
+with a working setup — no manual file surgery required.
+
+## Manual install
 
 ```bash
 git clone https://github.com/GonzaloFuentes1/auto-lab.git my-project

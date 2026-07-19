@@ -13,6 +13,8 @@ paper/*.synctex.gz
 paper/*.fls
 paper/*.fdb_latexmk
 paper/*.toc
+paper/.venv-figs/
+paper/figures/*.pdf
 
 # OS
 .DS_Store
