@@ -17,9 +17,13 @@ ask for, instead of discovering the gap at write-up time.
 
 All four required before `status: promoted`:
 
-1. **Mechanistic/mathematical formulation** — not necessarily a formal theorem, but a precise,
-   falsifiable statement of *why* the effect should happen, written down somewhere durable (e.g.
-   a `math_notes.md`) under a heading matching the current hypothesis ID. If your project has
+1. **Mechanistic/mathematical formulation, PhD-level rigor.** Precise definitions for every object
+   used, a formally stated claim (proposition/lemma form, not prose intuition), and either a real
+   derivation/proof or an explicit statement of what is *not* proven and why (e.g. "empirically
+   verified on N=5000 samples, no proof of the general case"). "Intuitively this should help
+   because X" does not clear this bar on its own — tighten it into something a reviewer could try
+   to falsify mathematically, not just narratively. Written down somewhere durable (e.g. a
+   `math_notes.md`) under a heading matching the current hypothesis ID. If your project has
    renumbered or reorganized hypothesis IDs at some point, verify an existing section is actually
    about the hypothesis you think it is before trusting it — don't assume a matching heading means
    matching content.
