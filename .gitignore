@@ -18,3 +18,10 @@ paper/figures/*.pdf
 
 # OS
 .DS_Store
+
+# chessbot: data, shards, checkpoints and run artifacts never go in git
+chessbot/data/
+chessbot/runs/
+*.pt
+*.npz
+*.zst

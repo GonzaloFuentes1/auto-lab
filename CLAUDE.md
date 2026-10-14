@@ -1,13 +1,19 @@
-# {{PROJECT_NAME}}
+# chessbot (auto-lab side project)
 
-{{ONE_LINE_PROJECT_DESCRIPTION}}. Target venue: {{VENUE}}.
-{{CLUSTER_OR_COMPUTE_NOTES — e.g. "Cluster: X (scheduler Y, partition Z)." or "Local GPU only."}}
+A neural chess engine built as engine distillation (supervised on Stockfish-labelled positions)
+→ MCTS search → bounded RL fine-tuning (Gumbel expert iteration + KL anchor). The research angle
+is **Elo per FLOP** and **whether cheap RL can beat its teacher**, not out-muscling Stockfish.
+Target venue: TBD (arXiv / games-and-search workshop; decide once phase-2 numbers exist).
+Compute: **TODO — not decided yet** (CPU is only good for smoke tests; phase 1 needs a GPU).
+
+Background and rationale for every design choice: `notes/sota_chess_review.md` (read this
+before proposing a new direction; it is the literature grounding for H1–H7).
 
 ## Orientation — what's what
 
 | Directory | Status | Notes |
 |---|---|---|
-| `{{ACTIVE_REPO}}/` | **ACTIVE** | All new work goes here. |
+| `chessbot/` | **ACTIVE** | Python package + tests. `chessbot/chessbot/{encoding,model,data,train,search,uci,arena,puzzles,prepare}.py`. Data/checkpoints go in `chessbot/data/`, `chessbot/runs/` (git-ignored). |
 | `research/` | active | `state.jsonl` (append-only lab notebook), `HYPOTHESES_SUMMARY.md` (ordered digest), `PAPER_STANDARD.md` (rigor gate for paper claims), `significance.py`/`sync_citations.py` (deterministic helpers). |
 | `paper/` | active | LaTeX source, compiled with `tectonic` (see `build-paper` skill). |
 | `notes/` | active | `journal/` (weekly log), `meetings/`. |
@@ -69,14 +75,27 @@ loop above stays fast.
 ## Compute cheatsheet
 
 ```bash
-{{COMPUTE_ENV_SETUP}}
+cd chessbot && pip install -r requirements.txt && python -m pytest -q   # 8 tests, ~10s on CPU
 
-{{QUEUE_STATUS_COMMAND}}          # e.g. squeue -u <user> --format="%.7i %.8j %.2t %.10M %R"
+# data (lichess, CC0) -> shards. Use disjoint slices for train/val (--skip).
+python -m chessbot.prepare evaldb lichess_db_eval.jsonl.zst data/shards/evaldb --limit 50000000
+# train / evaluate / play
+python -m chessbot.train --data data/shards/evaldb --val-data data/shards/evaldb_val --out runs/<exp_id>
+python -m chessbot.puzzles --ckpt runs/<exp_id>/ckpt.pt --csv data/lichess_db_puzzle.csv --limit 10000
+python -m chessbot.arena --ckpt runs/<exp_id>/ckpt.pt --nodes 1 --stockfish $(which stockfish) --sf-elo 2000 --games 200
+python -m chessbot.uci --ckpt runs/<exp_id>/ckpt.pt --nodes 400        # for cutechess / lichess-bot
+
+# TODO compute: queue status / GPU check commands once the compute environment is decided
 nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv,noheader
 ```
 
-{{ANY_SHARED_INFRA_NOTES — e.g. "GPUs run both via scheduler and direct CUDA_VISIBLE_DEVICES=N +
-nohup — check both paths when checking what's running."}}
+**Evaluation protocol (don't deviate without a decision_log entry):** playing strength is
+measured with `chessbot.arena` (paired openings, Elo diff with 95% CI) — vs the Stockfish
+`UCI_Elo` ladder for absolute numbers, checkpoint-vs-checkpoint for A/B hypotheses. Puzzle accuracy
+is a secondary, cheap metric only: it can dissociate from Elo (Miłosz et al. 2026). Never confirm
+a hypothesis on puzzles alone, and never compare Elo numbers across different ladders (engine
+ladder vs Lichess-human ratings). `research/significance.py` assumes binary success rates; for
+match results use the Elo CI printed by `arena.py`.
 
 ## Skills installed (`.claude/skills/`)
 
@@ -99,5 +118,5 @@ in `main.tex` has TODO markers pointing at the exact source for each piece
 `.claude/agents/autoresearch-template.md` is a template for an autonomous agent that reads
 `research/state.jsonl`, checks compute availability, launches the next highest-priority
 experiment, logs results, grounds new hypotheses against prior literature via web search, and
-self-paces with a wakeup schedule. Copy it to `~/.claude/agents/autoresearch-{{PROJECT_NAME}}.md`
-and fill in the `{{PLACEHOLDERS}}` before use.
+self-paces with a wakeup schedule. Copy it to `~/.claude/agents/autoresearch-chessbot.md`
+and fill in its placeholders (compute paths are still TODO) before use.

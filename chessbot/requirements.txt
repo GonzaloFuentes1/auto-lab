@@ -1,0 +1,5 @@
+torch>=2.3
+chess>=1.10
+numpy
+zstandard
+pytest
