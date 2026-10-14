@@ -20,14 +20,17 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("path")
     ap.add_argument("out_dir")
     ap.add_argument("--limit", type=int)
-    ap.add_argument("--skip", type=int, default=0, help="skip the first N records (for disjoint val slices)")
+    ap.add_argument("--skip", type=int, default=0, help="skip the first N records (evaldb: raw lines; pgn: positions)")
     ap.add_argument("--shard-size", type=int, default=1_000_000)
     ap.add_argument("--min-elo", type=int, default=2000)
     args = ap.parse_args(argv)
 
-    records = iter_eval_db(args.path) if args.source == "evaldb" else iter_pgn_games(args.path, args.min_elo)
-    records = itertools.islice(records, args.skip, None)
-    n = write_shards(records, args.out_dir, args.shard_size, args.limit)
+    if args.source == "evaldb":  # --skip/--limit count raw records, so slices never overlap
+        records = iter_eval_db(args.path, skip=args.skip, max_lines=args.limit)
+        n = write_shards(records, args.out_dir, args.shard_size)
+    else:
+        records = itertools.islice(iter_pgn_games(args.path, args.min_elo), args.skip, None)
+        n = write_shards(records, args.out_dir, args.shard_size, args.limit)
     print(f"wrote {n:,} positions to {args.out_dir}")
 
 

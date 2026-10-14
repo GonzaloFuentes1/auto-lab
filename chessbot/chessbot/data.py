@@ -13,6 +13,7 @@ Shard layout (one .npz per shard):
 from __future__ import annotations
 
 import io
+import itertools
 import json
 from pathlib import Path
 from typing import Iterator
@@ -54,9 +55,12 @@ def parse_eval_record(line: str) -> tuple[chess.Board, chess.Move, float] | None
     return board, move, score
 
 
-def iter_eval_db(path: str | Path) -> Iterator[tuple[chess.Board, chess.Move, float]]:
+def iter_eval_db(path: str | Path, skip: int = 0,
+                 max_lines: int | None = None) -> Iterator[tuple[chess.Board, chess.Move, float]]:
+    """Slices by raw line (no parsing while skipping), so [skip, skip+max_lines) slices are disjoint
+    and can be prepared in parallel."""
     with open_text(path) as fh:
-        for line in fh:
+        for line in itertools.islice(fh, skip, None if max_lines is None else skip + max_lines):
             out = parse_eval_record(line)
             if out is not None:
                 yield out
@@ -121,7 +125,7 @@ class ShardData:
     """Loads all shards in a directory into memory and samples random minibatches."""
 
     def __init__(self, shard_dir: str | Path):
-        files = sorted(Path(shard_dir).glob("shard_*.npz"))
+        files = sorted(Path(shard_dir).glob("*shard_*.npz"))
         if not files:
             raise FileNotFoundError(f"no shard_*.npz in {shard_dir}")
         parts = [np.load(f) for f in files]
