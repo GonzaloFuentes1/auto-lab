@@ -8,8 +8,10 @@ Pregunta de partida: ¿conviene hacer primero **aprendizaje supervisado (SL)** y
 1. **La idea SL → RL va bien encaminada, con dos ajustes importantes.**
    - El SL tiene que **destilar un motor** (evaluaciones de Stockfish o los objetivos de MCTS de
      Lc0), no imitar partidas humanas. Imitar humanos te deja en nivel humano (techo de Maia).
-     Destilar Stockfish lleva un transformer **sin búsqueda** a ~2900 Elo blitz en Lichess
-     (Ruoss et al. 2024).
+     Destilar Stockfish lleva un transformer **sin búsqueda** a 2895 Elo blitz en Lichess contra
+     humanos (Ruoss et al. 2024). Contra bots, el mismo modelo marca 2299: los humanos sufren
+     más contra un rival que nunca se equivoca tácticamente que los motores, así que las dos
+     escalas no se pueden comparar.
    - **Hacer RL desde cero no es viable en un side-project.** AlphaZero y Lc0 costaron (según
      estimaciones) decenas de millones de dólares en cómputo, o años de cómputo distribuido entre
      voluntarios. El RL sirve como **fine-tuning** sobre la red SL, con MCTS barato (Gumbel) y un
@@ -49,7 +51,7 @@ Cambiar cualquiera de estos métodos requiere una entrada `decision_log` en `res
 |---|---|---|---|---|
 | **Stockfish 19** (sep. 2026) | alpha-beta, CPU | NNUE (MLP pequeño, actualizable en forma incremental) | SL sobre miles de millones de posiciones con eval de motor (`nnue-pytorch`; los mejores nets usan ~16B posiciones con score de profundidad 9 y >200 épocas) | ~3650 CCRL 40/15, #1 |
 | **Lc0** + Chessformer/BT4 | MCTS (PUCT), GPU | transformer, 1 token por casilla, ~15 capas × 1024 | históricamente RL self-play distribuido; Chessformer se entrenó sobre un dataset fijo de una corrida de Lc0 (abril 2024) | #2; según el paper, gana torneos a Stockfish; solo la política ya es nivel GM |
-| **searchless_chess** (DeepMind 2024) | ninguna (1 forward) | transformer decoder de 270M | SL sobre ChessBench: 15B action-values de Stockfish 16 | 2895 Lichess blitz vs humanos |
+| **searchless_chess** (DeepMind 2024) | ninguna (1 forward) | transformer decoder de 270M | SL sobre ChessBench: 15B action-values de Stockfish 16 | 2895 Lichess blitz vs humanos; 2299 vs bots (9M: 2054 vs bots) |
 | **Maia-2 / Maia-3** | ninguna | Chessformer | SL sobre partidas humanas | imita humanos (57% de acierto de jugada) |
 | **LLMs generales** | razonamiento en texto | LLM | RL/SFT con texto | muy débil: o3 ~758 Elo en LLM CHESS; ningún LLM supera a Maia-1100 en ChessArena |
 
@@ -113,13 +115,60 @@ profesor con poco cómputo?"), no como el motor principal de fuerza.
 
 ## 5. Riesgos y decisiones abiertas
 
-- **Cómputo:** está indefinido. La fase 1 en CPU solo sirve para smoke tests; un modelo de 50M
-  sobre ~400M posiciones necesita GPU (orden de 1–3 días en una A100). Hay que definir
-  cluster o GPU local.
+- **Cómputo:** está indefinido. El presupuesto por fase está en la sección 6.
 - **Preparar datos en Python es lento** (~6k pos/s por núcleo). Para 400M posiciones hay que
   paralelizar (multiproceso por shard) o portar el encoding a Rust/C++.
 - **Elo vs humanos ≠ Elo vs motores.** Hay que reportar ambas escaleras por separado y no mezclarlas.
 - **Puzzles ≠ fuerza de juego** (Miłosz 2026). Ninguna hipótesis se confirma solo con puzzles.
+
+## 6. Presupuesto de cómputo (estimado, octubre 2026)
+
+Los FLOPs por posición se midieron con `torch.utils.flop_counter` sobre `model.py`. Las horas
+de GPU **son estimaciones, no mediciones**: suponen un throughput efectivo de ~100 TFLOP/s en
+bf16 para una A100 (~30% de utilización con secuencias cortas) y ~250 para una H100. Para
+convertir horas de A100 a H100, dividir por ~2,5. Lo primero que hay que hacer al tener GPU es
+medir el throughput real y corregir esta tabla.
+
+Una ventaja de nuestro diseño: la policy head puntúa las 1858 jugadas en **un** forward por
+posición. El modelo action-value de Ruoss, en cambio, hace un forward por cada par
+(posición, jugada), ~30 veces más. Por eso podemos usar modelos chicos con datos grandes.
+
+| Config | Params | GFLOP fwd/posición | Uso |
+|---|---|---|---|
+| d256 l8 | 6,8M | 0,87 | barridos rápidos y ablaciones (H2, H3) |
+| d512 l8 | 26M | 3,4 | baseline principal (H1, H4, base del RL) |
+| d768 l12 | 88M | 11,4 | escalamiento |
+| d1024 l16 | 206M | 26,7 | techo (clase BT4 / searchless 270M) |
+
+Costo de entrenamiento = 3 × fwd × posiciones vistas:
+
+| Corrida | Posiciones vistas | FLOPs | A100 | H100 |
+|---|---|---|---|---|
+| ablación 6,8M | 100M | 2,6e17 | ~1 h | <0,5 h |
+| baseline 26M | 300M | 3,1e18 | ~9 h | ~3,5 h |
+| 88M | 1B | 3,4e19 | ~4 días | ~1,5 días |
+| 206M | 2B | 1,6e20 | ~19 días | ~7 días (≈1 día en 8×H100) |
+
+**RL (fase 3).**
+- Una partida de self-play (~80 plies × 32 simulaciones Gumbel) con el modelo de 26M cuesta
+  ~8,7 TFLOP. Eso da ~40k partidas por hora de A100 si la inferencia va bien batcheada entre
+  muchas partidas en paralelo; el MCTS en Python necesita ≥16 núcleos para alimentar la GPU.
+- El presupuesto de H5 (50 h de GPU) da ~2M partidas.
+- Re-etiquetar con Stockfish (~10 ms/posición) esas ~160M posiciones cuesta ~450 horas-núcleo
+  de CPU, o ~14 h con 32 núcleos.
+
+**Evaluación.**
+- Un match de 200 partidas contra Stockfish con 400 nodos por jugada son ~2 h secuenciales;
+  es lo que más tiempo de pared consume, y conviene paralelizarlo por núcleo.
+
+**Datos y almacenamiento.**
+- Eval DB: 22,4 GB comprimida.
+- Shards: ~70 bytes por posición (7 GB por cada 100M), y se cargan completos en RAM.
+- Puzzles: 0,3 GB.
+
+**Máquina mínima recomendada:** 1 GPU (A100/H100 de 40–80 GB, o RTX 4090/5090 de 24–32 GB),
+16–32 núcleos, 64 GB de RAM y ~200 GB de disco. Con eso se cubren las fases 1–3 en la escala
+26M. Solo hacen falta 4–8 GPUs para escalar a 88M–206M.
 
 ## Fuentes
 
