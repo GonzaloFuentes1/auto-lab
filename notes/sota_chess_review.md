@@ -30,6 +30,19 @@ Pregunta de partida: ¿conviene hacer primero **aprendizaje supervisado (SL)** y
    en **Elo por FLOP**: el bot sin búsqueda o con poca búsqueda más fuerte para un presupuesto
    dado, y RL de fine-tuning que mejore sobre su profesor.
 
+## Métodos elegidos (v1)
+
+Cambiar cualquiera de estos métodos requiere una entrada `decision_log` en `research/state.jsonl`.
+
+| Componente | Método | Alternativa descartada (y por qué) |
+|---|---|---|
+| Representación | 64 tokens de casilla desde la perspectiva de quien mueve + token global (enroque, regla de 50); 1858 jugadas | historial de 8 posiciones estilo AlphaZero: más caro y aporta poco con buenos datos |
+| Red | transformer encoder pre-LN, sesgo de atención aprendido (proxy de GAB/smolgen); policy origen→destino; value con HL-Gauss de 64 bins | ResNet/CNN: Lc0 BT4 ya supera a su mejor CNN (+270 Elo en la política cruda) |
+| SL (fase 1) | destilar Stockfish: Lichess eval DB (395M) → política = 1ª jugada de la PV, valor = win-prob. Si escalamos, ChessBench (15B action-values) | imitar humanos: tiene techo humano (queda solo como baseline en H1) |
+| Búsqueda (fase 2) | PUCT MCTS (c=1,75, FPU-reduction), batcheado en GPU | alpha-beta + NNUE: es reconstruir Stockfish y no aprovecha un transformer grande |
+| RL (fase 3) | expert iteration con **Gumbel MCTS** (16–64 simulaciones), ancla **KL forward** al prior SL, liga = self-play + checkpoints anteriores + SF@`UCI_Elo`, posiciones re-etiquetadas con SF | AlphaZero desde cero (costo de ~decenas de M USD); PPO/GRPO sin búsqueda (sin garantía de mejora de política); LLMs (<800 Elo) |
+| Evaluación | `arena.py`: aperturas pareadas, Elo con IC95 vs escalera SF `UCI_Elo` o checkpoint vs checkpoint; puzzles solo como métrica secundaria | puzzles como métrica principal (se disocian del Elo) |
+
 ## 1. El panorama
 
 | Sistema | Búsqueda | Red | Cómo se entrena | Fuerza aprox. |
