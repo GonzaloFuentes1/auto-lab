@@ -6,10 +6,12 @@ append-only lab notebook, an autonomous experiment-running agent, statistical-si
 checking, a citation pipeline, and a paper-writing setup that all talk to each other, out of the
 box.
 
-Extracted and generalized from a real ML research project (world models for RL) after ~two weeks
-of actual daily use — 31+ hypotheses tracked, several rounds of "wait, was that actually
-significant?" caught before they became embarrassing paper claims. This isn't a designed-in-a-
-vacuum template; every piece exists because something went wrong once without it.
+Extracted and generalized from a real ML research project (world models for RL). Background on
+that origin project, for context only: after about two weeks of daily use its own log held more
+than 31 hypotheses, and several "was that actually significant?" moments were caught before they
+became paper claims. None of that data is in this repository, which ships an empty log (see
+[What ships empty](#what-ships-empty-researchstatejsonl)). Every piece exists because something
+went wrong once without it.
 
 ## Why
 
@@ -24,8 +26,8 @@ written from memory.
 
 | Piece | What it does |
 |---|---|
-| `research/state.jsonl` | Append-only lab notebook. One JSON line per hypothesis, result, verdict, insight, or decision. Never edited, only appended — the whole system is built around this being cheap to trust. |
-| `research/HYPOTHESES_SUMMARY.md` | The ordered, human-and-agent-readable digest of every hypothesis's current status — read this instead of re-parsing the whole log. |
+| `research/state.jsonl` | Append-only lab notebook. One JSON line per hypothesis, result, verdict, insight, or decision. Never edited, only appended — the whole system is built around this being cheap to trust. **Ships as an empty file** (0 bytes); see [below](#what-ships-empty-researchstatejsonl). |
+| `research/HYPOTHESES_SUMMARY.md` | The ordered, human-and-agent-readable digest of every hypothesis's current status — read this instead of re-parsing the whole log. **Not shipped**: you create it once you have a few hypotheses, following `research/HYPOTHESES_SUMMARY_HOWTO.md`. |
 | `research/PAPER_STANDARD.md` | A **separate, higher** rigor bar for the handful of hypotheses that will actually become paper claims (math formulation, pre-registered prediction, multi-seed/cross-condition validation, one-line claim) — without slowing down the fast loop for everything else. |
 | `research/significance.py` | Wilson-score confidence intervals over your results, zero LLM calls. Flags "likely real" vs "within noise" before anyone calls a delta a discovery. |
 | `research/sync_citations.py` | Turns `citation` log entries (found during literature-grounding search) into a clean `references.bib`, automatically, deduplicated. |
@@ -37,6 +39,42 @@ written from memory.
 | `.claude/skills/build-paper` | Compiles the paper, syncs citations first, reminds you to run the significance check before writing a claim. |
 | `.claude/skills/weekly-journal` | Closes out a weekly log from the state log instead of from memory. |
 | `.claude/skills/paper-vs-code` | Cross-checks a paper's claimed method against its actual released code — catches the gap between what's described and what's implemented, with numerical verification where it's cheap. |
+
+## What ships empty: `research/state.jsonl`
+
+`research/state.jsonl` is committed as a zero-byte file on purpose. It is a template for **your**
+lab notebook, not a record of past work: this repository contains no hypotheses, results, or
+verdicts, and `research/significance.py` will report "No 'result' entries found" until you append
+some. The schema is defined in `.claude/skills/log-finding/SKILL.md`.
+
+The three lines below are **illustrative examples of the format only**. They are invented, they
+do not come from any experiment, and they are not in the shipped file.
+
+```jsonl
+{"type":"hypothesis","id":"H1","prediction":"+5..10pp success rate at offset 10, because the new cost term penalizes drift"}
+{"type":"result","exp_id":"H1_example","env":"example-env","results":{"0":62,"10":58},"deltas_vs_baseline":{"0":2,"10":8},"note":"EXAMPLE ONLY, invented numbers"}
+{"type":"hypothesis_status","id":"H1","verdict":"pending","prediction":"+5..10pp success rate at offset 10, because the new cost term penalizes drift"}
+```
+
+Here `results` maps an offset (or metric name) to a success rate in percent, and
+`deltas_vs_baseline` gives the change in percentage points. Running the significance helper on
+those three lines (saved to a scratch file, with the default of 50 trials per offset) prints:
+
+```text
+$ python research/significance.py --id H1 --state scratch.jsonl
+=== H1: 1 result entry found ===
+
+  exp_id=H1_example  env=example-env  N=50/offset
+  offset     SR%           95% CI   Δ vs baseline  verdict
+       0    62.0  [ 48.2,  74.1]          +2.0pp  within noise (~2SE)
+      10    58.0  [ 44.2,  70.6]          +8.0pp  within noise (~2SE)
+```
+
+That output was produced with Python 3.12 on Windows 11 (x86-64) and describes only the invented
+numbers above. Note how a +8pp delta at 50 trials still falls within noise, which is the kind of
+claim the helper exists to catch. Set `DEFAULT_N` in `significance.py` (or pass `--n`) to match
+your real evaluation protocol. On Windows consoles that default to a legacy code page, set
+`PYTHONUTF8=1` so the table header prints.
 
 ## Install — the easy way
 
